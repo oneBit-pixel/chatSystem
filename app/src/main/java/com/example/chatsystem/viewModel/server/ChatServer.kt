@@ -11,31 +11,35 @@ import java.net.InetSocketAddress
 
 class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
-    companion object {
+    private lateinit var listener:WebSocketServerListener
+
+    companion object  {
         private const val port = 6666
         val sInstance by lazy(LazyThreadSafetyMode.NONE) {
             ChatServer(InetSocketAddress(port))
         }
+
     }
 
-
-    private fun startConnect() {
-        sInstance.start()
-    }
 
     //发送所有信息给组员
-    private fun sendMessage(str:String){
+    private fun sendMessage(str: String) {
         sInstance.broadcast(str)
     }
 
     //成功建立连接
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
-
+        println("连接成功")
+        listener?.let {
+            listener.onStatusChanged(WebSocketStatus.CONNECTED)
+        }
     }
 
     //服务器关闭
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
-
+        listener?.let {
+            listener.onStatusChanged(WebSocketStatus.DISCONNECTED)
+        }
     }
 
     //收到信息
@@ -44,11 +48,16 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
         message?.let {
             sendMessage(it)
         }
+        listener?.let {
+            listener.onStatusChanged(WebSocketStatus.MESSAGE_RECEIVED)
+        }
     }
 
     //连接发生异常
     override fun onError(conn: WebSocket?, ex: Exception?) {
-
+        listener?.let {
+            listener.onStatusChanged(WebSocketStatus.ERROR)
+        }
     }
 
     //正在启动
@@ -56,4 +65,21 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
     }
 
+    fun addListener(listener: WebSocketServerListener){
+        this.listener=listener
+    }
+
+
+
+    interface WebSocketServerListener {
+        fun onStatusChanged(status: WebSocketStatus)
+    }
+
+}
+enum class WebSocketStatus {
+    CONNECTING,
+    CONNECTED,
+    DISCONNECTED,
+    ERROR,
+    MESSAGE_RECEIVED
 }
