@@ -14,11 +14,10 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
     private lateinit var listener:WebSocketServerListener
 
     companion object  {
-        private const val port = 6666
+        private const val port = 8080
         val sInstance by lazy(LazyThreadSafetyMode.NONE) {
             ChatServer(InetSocketAddress(port))
         }
-
     }
 
 
@@ -44,6 +43,7 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
     //收到信息
     override fun onMessage(conn: WebSocket?, message: String?) {
+        println("收到消息了==>$message")
         //当收到消息的时候 发送给客户端
         message?.let {
             sendMessage(it)

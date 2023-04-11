@@ -14,14 +14,12 @@ class ServerViewModel :ViewModel(), ChatServer.WebSocketServerListener {
     val webState=MutableLiveData<WebSocketStatus>()
     init {
         //启动webSocket服务端
+        println("启动webSocket服务端")
+        startServer()
+    }
+    private fun startServer(){
         ChatServer.sInstance.addListener(this)
-    }
-    companion object{
-
-    }
-
-    fun startServer(port:Int){
-
+        ChatServer.sInstance.start()
     }
 
     override fun onStatusChanged(status: WebSocketStatus) {

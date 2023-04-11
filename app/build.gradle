@@ -33,6 +33,11 @@ android {
     buildFeatures {
         compose true
     }
+    buildscript {
+        ext{
+            compose_version='1.4.0'
+        }
+    }
 }
 
 dependencies {
@@ -56,6 +61,7 @@ dependencies {
     implementation 'androidx.compose.material:material:1.1.0-alpha01'
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.activity:activity-compose:1.4.0'
+
     //room
     def room_version = "2.5.0"
     implementation "androidx.room:room-runtime:$room_version"
