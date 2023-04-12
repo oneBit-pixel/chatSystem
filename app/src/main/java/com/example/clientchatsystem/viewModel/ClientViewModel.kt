@@ -124,10 +124,11 @@ class ClientViewModel : ViewModel() {
     //使用webSocket发送图片
     fun sendImage(byteArray: ByteArray) {
         val typeByte = MessageType.IMAGE.ordinal.toByte()
+
         val byteString = ByteArray(1) {
             typeByte
         }.plus(byteArray).toByteString()
-
+        println("字节大小==>${byteString.size}")
         webSocket.send(byteString)
     }
 

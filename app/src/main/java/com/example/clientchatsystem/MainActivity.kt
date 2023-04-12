@@ -27,6 +27,7 @@ import com.example.clientchatsystem.model.MessageModel
 import com.example.clientchatsystem.model.MessageType
 import com.example.clientchatsystem.ui.base.BaseVMActivity
 import com.example.clientchatsystem.viewModel.ClientViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.ByteString.Companion.readByteString
 import java.io.ByteArrayOutputStream
@@ -39,7 +40,7 @@ import java.io.ByteArrayOutputStream
  * @author zhangxuyang
  * @create 2023/4/12
  **/
-    class MainActivity : BaseVMActivity<ClientViewModel>() {
+class MainActivity : BaseVMActivity<ClientViewModel>() {
 
 
     override fun getVMClass(): Class<ClientViewModel> = ClientViewModel::class.java
@@ -72,7 +73,7 @@ import java.io.ByteArrayOutputStream
         // 处理选择的图片
         uri?.let {
             viewModel.apply {
-                viewModelScope.launch {
+                viewModelScope.launch(Dispatchers.IO) {
                     val stream = contentResolver.openInputStream(uri)
 
                     val bitmap = BitmapFactory.decodeStream(stream)
@@ -80,21 +81,23 @@ import java.io.ByteArrayOutputStream
                     //目标大小
                     val targetSize = 1024 * 1024
                     //原始大小
-                    val originalSize=bitmap.byteCount
+                    val originalSize = bitmap.byteCount
 
                     val options = BitmapFactory.Options()
                     //设置压缩图片比例
-                    options.inSampleSize=calculateInSampleSize(originalSize,targetSize)
+                    options.inSampleSize = calculateInSampleSize(originalSize, targetSize)
                     val outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG,100,outputStream)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
 
                     var byteArray = outputStream.toByteArray()
-                    while (byteArray.size>targetSize){
-                        options.inSampleSize*=2
+                    println("66666")
+                    while (byteArray.size < targetSize) {
+                        options.inSampleSize *= 2
                         outputStream.reset()
-                        bitmap.compress(Bitmap.CompressFormat.JPEG,100,outputStream)
-                        byteArray=outputStream.toByteArray()
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                        byteArray = outputStream.toByteArray()
                     }
+                    println("12342134")
                     sendImage(byteArray)
                 }
             }
@@ -126,7 +129,7 @@ import java.io.ByteArrayOutputStream
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Bottom
             ) {
-                LazyColumn(reverseLayout = true,modifier = Modifier.weight(5f), content = {
+                LazyColumn(reverseLayout = true, modifier = Modifier.weight(5f), content = {
                     messageState?.let { message ->
                         items(message.reversed()) { item: MessageModel ->
                             when (item.type) {
@@ -165,7 +168,7 @@ import java.io.ByteArrayOutputStream
                         .weight(1f)
                 )
                 Box(
-                    modifier = Modifier. weight (2f)
+                    modifier = Modifier.weight(2f)
                 ) {
                     TextField(
                         value = text, onValueChange = {
