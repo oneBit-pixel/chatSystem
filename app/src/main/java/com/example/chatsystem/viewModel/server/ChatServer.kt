@@ -8,6 +8,7 @@ import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
 import java.lang.Exception
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 
 class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
@@ -41,6 +42,12 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
         }
     }
 
+    override fun onMessage(conn: WebSocket?, message: ByteBuffer?) {
+        super.onMessage(conn, message)
+        println("收到字节流信息...")
+        sInstance.broadcast(message)
+    }
+
     //收到信息
     override fun onMessage(conn: WebSocket?, message: String?) {
         println("收到消息了==>$message")
@@ -68,7 +75,6 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
     fun addListener(listener: WebSocketServerListener){
         this.listener=listener
     }
-
 
 
     interface WebSocketServerListener {
