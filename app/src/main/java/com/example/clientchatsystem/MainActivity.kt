@@ -76,13 +76,14 @@ class MainActivity : BaseVMActivity<ClientViewModel>() {
                 viewModelScope.launch(Dispatchers.IO) {
                     val stream = contentResolver.openInputStream(uri)
 
-                    val bitmap = BitmapFactory.decodeStream(stream)
+                    var bitmap = BitmapFactory.decodeStream(stream)
+                    stream?.close()
+
                     //压缩图片
                     //目标大小
                     val targetSize = 1024 * 1024
                     //原始大小
                     val originalSize = bitmap.byteCount
-
                     val options = BitmapFactory.Options()
                     //设置压缩图片比例
                     options.inSampleSize = calculateInSampleSize(originalSize, targetSize)
@@ -90,14 +91,22 @@ class MainActivity : BaseVMActivity<ClientViewModel>() {
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
 
                     var byteArray = outputStream.toByteArray()
-                    println("66666")
-                    while (byteArray.size < targetSize) {
+
+                    while (byteArray.size > targetSize) {
                         options.inSampleSize *= 2
+                        println("压缩比例==>${options.inSampleSize}")
                         outputStream.reset()
+                        val newStream = contentResolver.openInputStream(uri)
+                        //重新计算图片的大小
+                        bitmap = BitmapFactory.decodeStream(newStream,null,options)
+                        newStream?.close()
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                         byteArray = outputStream.toByteArray()
+                        println("转换后的大小==>${(byteArray.size/targetSize)}")
                     }
-                    println("12342134")
+                    //关闭流
+                    outputStream.close()
+
                     sendImage(byteArray)
                 }
             }
