@@ -9,11 +9,13 @@ import org.java_websocket.server.WebSocketServer
 import java.lang.Exception
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import java.util.*
+import kotlin.collections.HashSet
 
 class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
     private lateinit var listener:WebSocketServerListener
-
+    private val webSocketSet = Collections.synchronizedSet(LinkedHashSet<WebSocket>())
     companion object  {
         private const val port = 8080
         val sInstance by lazy(LazyThreadSafetyMode.NONE) {
@@ -29,7 +31,9 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
     //成功建立连接
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
-        println("连接成功")
+        println("有客户端连接")
+        //加入到集合中
+        webSocketSet.add(conn)
         listener?.let {
             listener.onStatusChanged(WebSocketStatus.CONNECTED)
         }
@@ -37,9 +41,11 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
 
     //服务器关闭
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
+        println("有客户端推出")
         listener?.let {
             listener.onStatusChanged(WebSocketStatus.DISCONNECTED)
         }
+        webSocketSet.remove(conn)
     }
 
     override fun onMessage(conn: WebSocket?, message: ByteBuffer?) {
@@ -65,6 +71,7 @@ class ChatServer(address: InetSocketAddress) : WebSocketServer(address) {
         listener?.let {
             listener.onStatusChanged(WebSocketStatus.ERROR)
         }
+        println("服务端错误...")
     }
 
     //正在启动
