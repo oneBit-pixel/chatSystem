@@ -99,7 +99,7 @@ class MainActivity : BaseVMActivity<ClientViewModel>() {
                         newStream?.close()
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                         byteArray = outputStream.toByteArray()
-                        println("转换后的大小==>${(byteArray.size / targetSize)}")
+                        println("转换后的大小==>${(byteArray.size )}")
                     }
                     //关闭流
                     outputStream.close()
@@ -108,6 +108,7 @@ class MainActivity : BaseVMActivity<ClientViewModel>() {
                 }
             }
         }
+        println("成功转发图片")
     }
 
     fun calculateInSampleSize(originalSize: Int, targetSize: Int): Int {
@@ -280,8 +281,6 @@ class MainActivity : BaseVMActivity<ClientViewModel>() {
                             )
                             Button(
                                 onClick = {
-                                    viewModel.sendMessage(text)
-                                    viewModel.sendMessage(text)
                                     viewModel.sendMessage(text)
                                     text = ""
                                 },
