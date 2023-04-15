@@ -12,7 +12,6 @@ import com.example.clientchatsystem.model.MessageType
 import com.example.clientchatsystem.viewModel.ConnectStatus.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 
 import okhttp3.*
@@ -20,9 +19,7 @@ import okio.ByteString.Companion.toByteString
 import okio.IOException
 import tutorial.SendMessage
 import tutorial.SendMessage.Foo
-import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
-import java.io.InputStreamReader
 import java.net.Socket
 import java.nio.ByteBuffer
 
@@ -44,6 +41,7 @@ class ClientViewModel : ViewModel() {
 
     companion object {
         const val port = 8080
+        const val HEAD_LENGTH = 4 //最大能传4GB
     }
 
     val ipAddress = NetworkUtils.getIPAddress(true)
@@ -75,64 +73,82 @@ class ClientViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             //此任务为阻塞 所以要开启多线程
             socket?.let {
-                val buf = ByteArray(byteSize)
-                while (!it.isClosed) {
-                    println("开始接收数据")
-                    val inputStream = it.getInputStream()
-                    println("test...")
-                    val reader = inputStream
+                try {
+                    val headBuffer = ByteArray(byteSize)
+                    var contentBuffer = ByteArrayOutputStream()
+                    var content: ByteArray
+                    while (!it.isClosed) {
+                        println("开始接收数据")
+                        val inputStream = it.getInputStream()
+                        //读取头部数据
+                        var headIndex = 0
+                        while (headIndex < HEAD_LENGTH) {
+                            val readCont =
+                                inputStream.read(headBuffer, headIndex, HEAD_LENGTH - headIndex)
+                            println("头部到了..")
+                            if (readCont == -1) {
+                                break
+                            }
+                            headIndex += readCont
+                        }
+                        //获取内容长度
+                        val contentLength = ByteBuffer.wrap(headBuffer).int
+                        val byteArray = ByteArray(contentLength)
 
-                    //最后转为字节组
-                    println("收到数据了...")
 
-                    val outputStream = ByteArrayOutputStream()
-                    val readSize = reader.read(buf)
-                    outputStream.write(buf, 0, readSize)
+                        println("contentLength==>${contentLength}")
 
-                    outputStream.flush()
+                        //读取后数据
+                        var contentIndex = 0
+                        while (contentIndex < contentLength) {
+                            println("收到消息==>${contentIndex}")
+                            val readCount = inputStream.read(
+                                byteArray,
+                                contentIndex,
+                                minOf(contentLength-contentIndex,inputStream.available())
+                            )
+
+                            if (readCount == -1) {
+                                break
+                            }
+                            contentIndex += readCount
+                        }
+
+                        //开始拼接
+                        if (contentIndex == contentLength) {
+                            println("读取内容完成...")
+                            content = byteArray
+
+                            //展示
+                            showMessage(content)
+
+                        } else {
+                            // 如果未拼接完成，则继续进行缓存
+                            contentBuffer.write(
+                                contentBuffer.toByteArray(),
+                                contentIndex,
+                                contentLength - contentIndex
+                            )
+                        }
+
+//                    println("test...")
+//                    val reader = inputStream
+//                    //最后转为字节组
+//                    println("收到数据了...")
+//
+//                    val outputStream = ByteArrayOutputStream()
+//                    val readSize = reader.read(buf)
+//                    outputStream.write(buf, 0, readSize)
+
+//                    outputStream.flush()
 //                    outputStream.close()
 
-                    val bytes = outputStream
-                    println("收到数据的大小==>${bytes.size()}")
-                    val newFoo = Foo.parseFrom(bytes.toByteArray())
-                    newFoo.apply {
-                        when (type) {
-                            SendMessage.MessageType.TEXT -> {
-                                val byteArray = data.toByteArray()
-                                println("本机IP==>$ipAddress")
-                                println("发送IP==>${newFoo.ip}")
-                                val message = MessageModel(
-                                    MessageType.TEXT,
-                                    byteArray,
-                                    local = if (ipAddress == newFoo.ip) {
-                                        println("123")
-                                        LocalType.RIGHT
-                                    } else {
-                                        LocalType.LEFT
-                                    }, name
-                                )
-                                _messageList.postValue(messageList.value.orEmpty() + message)
-                            }
-                            SendMessage.MessageType.IMAGE -> {
-                                println("收到图片了...")
-                                val byteArray = data.toByteArray()
-                                val message = MessageModel(
-                                    MessageType.IMAGE,
-                                    byteArray,
-                                    local = if (ipAddress == newFoo.ip) {
-                                        LocalType.RIGHT
-                                    } else {
-                                        LocalType.LEFT
-                                    }, name
-                                )
-                                _messageList.postValue(messageList.value.orEmpty() + message)
-                            }
-                            SendMessage.MessageType.UNRECOGNIZED -> {
-                                println("收到的数据没有该类型")
-                            }
-                        }
+
                     }
+                } catch (e: Exception) {
+                    println("出错了...${e.toString()}")
                 }
+
                 println("客户端断开连接...")
             } ?: run {
                 println("socket为空...")
@@ -140,6 +156,48 @@ class ClientViewModel : ViewModel() {
 
         }
 
+    }
+
+    private fun showMessage(content: ByteArray) {
+
+        val newFoo = Foo.parseFrom(content)
+        newFoo.apply {
+            when (type) {
+                SendMessage.MessageType.TEXT -> {
+                    val byteArray = data.toByteArray()
+                    println("本机IP==>$ipAddress")
+                    println("发送IP==>${newFoo.ip}")
+                    val message = MessageModel(
+                        MessageType.TEXT,
+                        byteArray,
+                        local = if (ipAddress == newFoo.ip) {
+                            println("123")
+                            LocalType.RIGHT
+                        } else {
+                            LocalType.LEFT
+                        }, name
+                    )
+                    _messageList.postValue(messageList.value.orEmpty() + message)
+                }
+                SendMessage.MessageType.IMAGE -> {
+                    println("收到图片了...")
+                    val byteArray = data.toByteArray()
+                    val message = MessageModel(
+                        MessageType.IMAGE,
+                        byteArray,
+                        local = if (ipAddress == newFoo.ip) {
+                            LocalType.RIGHT
+                        } else {
+                            LocalType.LEFT
+                        }, name
+                    )
+                    _messageList.postValue(messageList.value.orEmpty() + message)
+                }
+                SendMessage.MessageType.UNRECOGNIZED -> {
+                    println("收到的数据没有该类型")
+                }
+            }
+        }
     }
 
 
@@ -267,14 +325,21 @@ class ClientViewModel : ViewModel() {
                 println("开始发送信息")
                 try {
                     val outputStream = it.getOutputStream()
-
+                    println("messageSize==>${message.size}")
                     //计算消息实际长度的字节组
                     val lengthBytes = ByteBuffer.allocate(4).putInt(message.size).array()
-                    
+                    val head = ByteArray(HEAD_LENGTH)
+                    System.arraycopy(lengthBytes, 0, head, 0, lengthBytes.size)
 
+                    println("head==>${head.size}")
+                    println("lengthBytes==>${lengthBytes.size}")
 
+                    //发送头部
+                    outputStream.write(head)
+
+                    //分包发送消息
                     val totalSize = message.size
-                    println("message大小==>${totalSize}")
+                    println("totalSize==>${totalSize}")
                     var offSet = 0 //起始字节
                     var length = byteSize //本次要传输大小 1MB
 
